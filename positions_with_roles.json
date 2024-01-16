@@ -1,0 +1,154 @@
+[
+    {
+        "Position": "GK",
+        "Roles": [
+            "gkd",
+            "ska",
+            "sks",
+            "skd"
+        ]
+    },
+    {
+        "Position": "D (C)",
+        "Roles": [
+            "bpdc",
+            "bpdd",
+            "bpds",
+            "cdc",
+            "cdd",
+            "cds",
+            "wcba",
+            "wcbs",
+            "wcbd",
+            "ncbc",
+            "ncbs",
+            "ncbd"
+        ]
+    },
+    {
+        "Position": "D (L)",
+        "Alternative": "D (R)",
+        "Roles": [
+            "fba",
+            "fbd",
+            "fbs",
+            "ifbd",
+            "nfbd",
+            "wba",
+            "wbd",
+            "wbs"
+        ]
+    },
+    {
+        "Position": "WB (L)",
+        "Alternative": "WB (R)",
+        "Roles": [
+            "wba",
+            "wbd",
+            "wbs",
+            "iwba",
+            "iwbd",
+            "iwbs",
+            "cwba",
+            "cwbs"
+        ]
+    },
+    {
+        "Position": "DM (C)",
+        "Roles": [
+            "bwmd",
+            "bwms",
+            "dmd",
+            "dms",
+            "hbd",
+            "ad",
+            "dlpd",
+            "dlps",
+            "sva",
+            "svs",
+            "rps",
+            "regs"
+        ]
+    },
+    {
+        "Position": "M (C)",
+        "Roles": [
+            "bwmd",
+            "bwms",
+            "cma",
+            "cmd",
+            "cms",
+            "cars",
+            "b2bs",
+            "dlpd",
+            "dlps",
+            "meza",
+            "mezs",
+            "apa",
+            "aps",
+            "rps"
+        ]
+    },
+    {
+        "Position": "M (L)",
+        "Alternative": "M (R)",
+        "Roles": [
+            "wa",
+            "ws",
+            "dwd",
+            "dws",
+            "iwa",
+            "iws",
+            "wpa",
+            "wps"
+        ]
+    },
+    {
+        "Position": "AM (C)",
+        "Roles": [
+            "ama",
+            "ams",
+            "ssa",
+            "apa",
+            "aps",
+            "trea",
+            "engs"
+        ]
+    },
+    {
+        "Position": "AM (L)",
+        "Alternative": "AM (R)",
+        "Roles": [
+            "ifa",
+            "ifs",
+            "raua",
+            "apa",
+            "aps",
+            "iwa",
+            "iws",
+            "wa",
+            "ws",
+            "trea",
+            "wtfa",
+            "wtfs"
+        ]
+    },
+    {
+        "Position": "ST (C)",
+        "Roles": [
+            "pfa",
+            "pfd",
+            "pfs",
+            "tfa",
+            "tfs",
+            "pa",
+            "dlfa",
+            "dlfs",
+            "afa",
+            "cfa",
+            "cfs",
+            "trea",
+            "f9s"
+        ]
+    }
+]

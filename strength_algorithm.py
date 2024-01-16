@@ -6,9 +6,13 @@ class FMAlgorithm:
     team_file = 'ekstraklasa/pogon.html'
 
     positions_file = 'positions.json'
+    position_with_roles_file = 'positions_with_roles.json'
     # positions_file = 'positions_short.json'
     with open(positions_file, 'r') as f:
         positions = json.load(f)
+
+    with open(position_with_roles_file, 'r') as f:
+        positions_with_roles = json.load(f)
 
 
     squad_rawdata_list = pd.read_html(team_file, header=0, encoding="utf-8", keep_default_na=False)
@@ -17,6 +21,46 @@ class FMAlgorithm:
 
     limit_calculation_to_positions = False
     calculated_players = []
+
+    # def prepare_roles_for_player(self, player_positions):
+    #     roles = []
+
+    #     # Rozdziela pozycje na podstawie przecinków i nawiasów
+    #     positions = [pos.strip() for pos in player_positions.replace(")", "").split(",")]
+
+    #     for pos in positions:
+    #         # Dzieli pozycje na główne i opcjonalne (jeśli istnieją)
+    #         main_position, *options = pos.split(" ")
+    #         options = options[0].split("/") if options else []
+
+    #         # Przeszukuje JSON
+    #         for item in self.positions_with_roles:
+    #             item_main_position, *item_options = item['Position'].replace(")", "").split(" ")
+    #             item_options = item_options[0].split("/") if item_options else []
+
+    #             # Dokładne sprawdzenie, czy pozycje główne są takie same
+    #             if main_position == item_main_position.split(" ")[0]:
+    #                 # Sprawdza wszystkie kombinacje opcji
+    #                 if not options or any(opt in item_options for opt in options) or all(opt in item_options for opt in options):
+    #                     roles.extend(item['Roles'])
+    #                 elif 'Alternative' in item:
+    #                     # Sprawdza alternatywne pozycje
+    #                     alt_options = item['Alternative'].replace(")", "").split(" ")[1].split("/")
+    #                     if any(opt in alt_options for opt in options) or all(opt in alt_options for opt in options):
+    #                         roles.extend(item['Roles'])
+
+    #     return roles
+
+    def get_positions_list(self, player_positions):
+        positions = player_positions.split('/')
+        if positions != player_positions:
+        for pos in positions:
+
+    
+    def prepare_roles_for_player(self, player_positions):
+        positions_list = self.get_positions_list(player_positions)
+
+
 
     def calculate_role_strenght(self, player):
         
@@ -55,6 +99,7 @@ class FMAlgorithm:
         return best_players
 
 algorithm = FMAlgorithm()
+print(algorithm.prepare_roles_for_player('M (C)'))
 algorithm.calculate_strength_for_team()
-for position in algorithm.find_best_for_positions(3, ['gkd', 'afa']):
-    print(position)
+# for position in algorithm.find_best_for_positions(3, ['gkd', 'afa']):
+#     print(position)
