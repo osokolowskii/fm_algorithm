@@ -7,8 +7,9 @@ from collections import defaultdict
 
 class FMAlgorithm:
 
-    def __init__(self, whole_league=False):
+    def __init__(self, whole_league=False, calculate_other_positions=False):
         self.league_directory = 'ekstraklasa'
+        self.calculate_other_positions = calculate_other_positions
 
         self.positions_file = 'positions.json'
         self.position_with_roles_file = 'positions_with_roles.json'
@@ -39,7 +40,7 @@ class FMAlgorithm:
                     all_sides = self.get_sides_for_position(positions_list, i)
                 else:
                     all_sides = [pos[i] for i in range(pos.find('(')+1, pos.find(')'))]
-                pos = pos.split('(')[0]
+                pos = pos.strip().replace('  ', ' ').split(' ')[0]
                 all_positions.extend([f'{pos} ({side})' for side in all_sides])
 
         return all_positions
@@ -57,25 +58,38 @@ class FMAlgorithm:
         positions_list = self.get_positions_list(player_positions)
         return positions_list
     
-    def calculate_strength_in_position(self, player, position):
+    def calculate_strength_in_position(self, player, position, sign=1):
         player_strength = defaultdict(lambda: 0)
         if 'DM' in position:
             position = 'DM (C)'
-        roles_for_this_position = self.roles_for_all_positions[position.replace('  (', ' (').replace('(R)', '(L)')]
+        roles_for_this_position = self.roles_for_all_positions[position.strip().replace('  (', ' (').replace('(R)', '(L)')]
         for role in roles_for_this_position:
             for attribute in self.roles_values[role]:
-                player_strength[role] += player[attribute] * self.roles_values[role][attribute]
+                player_strength[role] += player[attribute] * self.roles_values[role][attribute] * sign
             player_strength[role] = player_strength[role] / len(self.roles_values[role])
         return player_strength
     
     def calculate_strength_of_player(self, player):
         player_strength = defaultdict(lambda: 0)
         player_positions = self.get_positions_list(player['Position'])
-        for position in player_positions:
-            position = position.lstrip()
-            position_strength = self.calculate_strength_in_position(player, position)
+
+        positions_to_calculate = player_positions if not self.calculate_other_positions else self.roles_for_all_positions.keys()
+
+        for position in positions_to_calculate:
+            sign = 1 if position in player_positions else -1
+            position_strength = self.calculate_strength_in_position(player, position, sign=sign)
+            
+            max_strength = 0
+            max_strength_role = None
+
             for role, strength in position_strength.items():
                 player_strength[role] += strength
+                if strength > max_strength:
+                    max_strength = strength
+                    max_strength_role = role
+
+            player_strength[f'BestRole_{position}'] = max_strength_role
+
         return player_strength
     
     def calculate_team_strength(self):
@@ -88,6 +102,15 @@ class FMAlgorithm:
     def save_team_strength(self, team_strength):
         data = [{'Name': name, **strengths} for name, strengths in team_strength.items()]
         df = pd.DataFrame(data)
+
+        # Sort columns
+        cols = df.columns.tolist()
+        cols.remove('Name')
+        best_role_cols = [col for col in cols if 'BestRole' in col]
+        other_cols = [col for col in cols if 'BestRole' not in col]
+        cols = ['Name'] + sorted(best_role_cols) + sorted(other_cols)
+        df = df[cols]
+
         team_name = self.team_file.split('/')[-1].split('.')[0]
         df.to_excel(f'{team_name}.xlsx', index=False)
 
@@ -102,7 +125,7 @@ class FMAlgorithm:
     
     
 
-algorithm = FMAlgorithm(whole_league=True)
+algorithm = FMAlgorithm(whole_league=False, calculate_other_positions=False)
 # algorithm = FMAlgorithm()
-# print(algorithm.save_team_strength(algorithm.calculate_team_strength()))
-algorithm.calculate_strength_of_league()
+print(algorithm.save_team_strength(algorithm.calculate_team_strength()))
+# algorithm.calculate_strength_of_league()
