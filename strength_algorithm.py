@@ -4,6 +4,13 @@ import json
 
 from collections import defaultdict
 
+formations_dict = {
+    'GK': ['GK'],
+    'Defenders': ['D', 'WB'],
+    'Midfielders': ['DM', 'M', 'AM'],
+    'Attackers': ['ST', 'W']
+}
+
 
 class FMAlgorithm:
 
@@ -89,8 +96,18 @@ class FMAlgorithm:
                     max_strength_role = role
 
             player_strength[f'BestRole_{position}'] = max_strength_role
+            player_strength['Positions'] = player_positions
+            player_strength['Formations'] = self.get_formations_from_positions(player_positions)
 
         return player_strength
+    
+    def get_formations_from_positions(self, player_positions):
+        formations = []
+        for pos in player_positions:
+            pos_to_check = pos.split(' ')[0]
+            formations.extend([key for key, value in formations_dict.items() if pos_to_check in value])
+                
+        return set(formations)
     
     def calculate_team_strength(self):
         team_strength = defaultdict(lambda: 0)
