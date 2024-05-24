@@ -145,4 +145,4 @@ class FMAlgorithm:
 algorithm = FMAlgorithm(whole_league=False, calculate_other_positions=False)
 # algorithm = FMAlgorithm()
 print(algorithm.save_team_strength(algorithm.calculate_team_strength()))
-# algorithm.calculate_strength_of_league()
+algorithm.calculate_strength_of_league()
