@@ -100,21 +100,18 @@ class SquadAnalyzer:
         # Stwórz pusty DataFrame do przechowywania wyników
         team_report = pd.DataFrame()
 
-        # Przejdź przez wszystkie pozycje
-        for position in self.positions_with_roles:
-            pos = position['Position']
-            alt = position.get('Alternative')
-
+        # Funkcja pomocnicza do tworzenia DataFrame dla jednej pozycji
+        def create_position_df(pos, players, roles):
             # Stwórz pusty DataFrame dla tej pozycji
             pos_df = pd.DataFrame(columns=[pos, 'Ranking', 'Best Role'])
 
-            # Przejdź przez wszystkich piłkarzy w drużynie
-            for _, player in team_squad.iterrows():
+            # Przejdź przez wszystkich piłkarzy
+            for _, player in players.iterrows():
                 # Sprawdź, czy piłkarz ma daną pozycję
                 if pos in player['Positions']:
                     # Oblicz siłę dla każdej roli i zapisz najmocniejszą
                     best_role, best_strength = max(
-                        ((role, player[role]) for role in position['Roles']),
+                        ((role, player[role]) for role in roles),
                         key=lambda x: x[1]  # Porównaj siłę, nie nazwę roli
                     )
 
@@ -125,31 +122,37 @@ class SquadAnalyzer:
                         'Best Role': best_role
                     }, ignore_index=True)
 
-            # Dodaj DataFrame pozycji do raportu drużyny
+            # Sort the DataFrame by Ranking in descending order
+            pos_df = pos_df.sort_values(by='Ranking', ascending=False)
+
+            # Reset the index of the DataFrame
+            pos_df = pos_df.reset_index(drop=True)
+
+            return pos_df
+
+        # Przejdź przez wszystkie pozycje
+        for position in self.positions_with_roles:
+            pos = position['Position']
+            alt = position.get('Alternative')
+
+            # Stwórz DataFrame dla głównej pozycji
+            pos_df = create_position_df(pos, team_squad, position['Roles'])
             team_report = pd.concat([team_report, pos_df], axis=1)
 
             # Jeśli istnieje alternatywna pozycja, stwórz dla niej osobny DataFrame
             if alt:
-                alt_df = pd.DataFrame(columns=[alt, 'Ranking', 'Best Role'])
-
-                for _, player in team_squad.iterrows():
-                    if alt in player['Positions']:
-                        best_role, best_strength = max(
-                            ((role, player[role]) for role in position['Roles']),
-                            key=lambda x: x[1]  # Porównaj siłę, nie nazwę roli
-                        )
-
-                        alt_df = alt_df._append({
-                            alt: player['Name'],
-                            'Ranking': best_strength,
-                            'Best Role': best_role
-                        }, ignore_index=True)
-
+                alt_df = create_position_df(alt, team_squad, position['Roles'])
                 team_report = pd.concat([team_report, alt_df], axis=1)
 
         # Zapisz raport drużyny do pliku Excela
         os.makedirs('reports', exist_ok=True)
         team_report.to_excel(f'reports/{team}_report.xlsx', index=False)
+
+    def rank_positions_in_all_teams(self):
+        # Przejdź przez wszystkie drużyny w lidze
+        for squad_dict in self.squads:
+            for team in squad_dict:
+                self.rank_positions_in_team(team)
     
             
 
@@ -160,4 +163,5 @@ squad_analyzer = SquadAnalyzer(league_dir='ekstraklasa_old')
 # squad = squad_analyzer.get_squad()
 # print(squad_analyzer.get_formation_strength('4-2-3-1'))
 # squad_analyzer.analyze_all_positions()
-squad_analyzer.rank_positions_in_team('pogoń')
+# squad_analyzer.rank_positions_in_team('pogoń')
+squad_analyzer.rank_positions_in_all_teams()

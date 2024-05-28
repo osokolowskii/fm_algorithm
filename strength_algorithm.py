@@ -43,6 +43,8 @@ class FMAlgorithm:
             for i, pos in enumerate(positions_list):
                 if pos == 'GK':
                     return ['GK']
+                if pos == 'DM':
+                    return ['DM (C)']
                 if '(' not in pos:
                     all_sides = self.get_sides_for_position(positions_list, i)
                 else:
