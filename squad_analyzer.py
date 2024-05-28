@@ -103,7 +103,7 @@ class SquadAnalyzer:
         # Funkcja pomocnicza do tworzenia DataFrame dla jednej pozycji
         def create_position_df(pos, players, roles):
             # Stwórz pusty DataFrame dla tej pozycji
-            pos_df = pd.DataFrame(columns=[pos, 'Ranking', 'Best Role'])
+            pos_df = pd.DataFrame(columns=[pos, f'{pos} Ranking', f'{pos} Best Role'])
 
             # Przejdź przez wszystkich piłkarzy
             for _, player in players.iterrows():
@@ -118,12 +118,12 @@ class SquadAnalyzer:
                     # Dodaj piłkarza do DataFrame
                     pos_df = pos_df._append({
                         pos: player['Name'],
-                        'Ranking': best_strength,
-                        'Best Role': best_role
+                        f'{pos} Ranking': best_strength,
+                        f'{pos} Best Role': best_role
                     }, ignore_index=True)
 
             # Sort the DataFrame by Ranking in descending order
-            pos_df = pos_df.sort_values(by='Ranking', ascending=False)
+            pos_df = pos_df.sort_values(by=f'{pos} Ranking', ascending=False)
 
             # Reset the index of the DataFrame
             pos_df = pos_df.reset_index(drop=True)
@@ -145,23 +145,96 @@ class SquadAnalyzer:
                 team_report = pd.concat([team_report, alt_df], axis=1)
 
         # Zapisz raport drużyny do pliku Excela
-        os.makedirs('reports', exist_ok=True)
-        team_report.to_excel(f'reports/{team}_report.xlsx', index=False)
+        os.makedirs(f'{self.league_dir}_reports', exist_ok=True)
+        team_report.to_excel(f'{self.league_dir}_reports/{team}_report.xlsx', index=False)
 
     def rank_positions_in_all_teams(self):
         # Przejdź przez wszystkie drużyny w lidze
         for squad_dict in self.squads:
             for team in squad_dict:
                 self.rank_positions_in_team(team)
-    
+
+    def compare_teams(self, places=0, file_name='comparison.xlsx'):
+        df = pd.DataFrame()
+
+        position_dataframes = {}
+
+        # Przejdź przez wszystkie pozycje
+        for position in self.positions_with_roles:
+            pos = position['Position']
+            alt = position.get('Alternative')
+            position_dataframes[pos] = pd.DataFrame()
+
+            # Dodaj nagłówki dla głównej pozycji
+            df[pos] = []
+            df[f'{pos} Team'] = []
+            df[f'{pos} Ranking'] = []
+            df[f'{pos} Best Role'] = []
+
+            # Jeśli istnieje alternatywna pozycja, dodaj dla niej nagłówki
+            if alt:
+                position_dataframes[alt] = pd.DataFrame()
+                df[alt] = []
+                df[f'{alt} Team'] = []
+                df[f'{alt} Ranking'] = []
+                df[f'{alt} Best Role'] = []
+
+        for file in os.listdir(f'{self.league_dir}_reports'):
+            if file.endswith('_report.xlsx'):
+                # Wczytaj raport drużyny do DataFrame
+                team_report = pd.read_excel(f'{self.league_dir}_reports/{file}')
+                team_positions = team_report.columns[::3]
+                team_name = file.replace('_report.xlsx', '')
+
+                # Przejdź przez wszystkie pozycje w raporcie drużyny
+                for pos in team_positions:
+                    # Jeśli DataFrame dla pozycji istnieje, dodaj dane do niego
+                    if pos in position_dataframes:
+                        position_data = team_report[[pos, f'{pos} Ranking', f'{pos} Best Role']].copy()
+                        position_data = position_data.dropna()
+
+                        # Dodaj kolumnę z nazwą drużyny
+                        position_data[f'{pos} Team'] = team_name
+
+                        position_dataframes[pos] = pd.concat([position_dataframes[pos], position_data])
+                
+
+        # Zapisz DataFrame do pliku Excela
+        for position_name, position_dataframe in position_dataframes.items():
+            position_dataframes[position_name] = position_dataframe.sort_values(by=f'{position_name} Ranking', ascending=False)
+        all_dataframes = [df.reset_index(drop=True) for pos, df in position_dataframes.items()]
+        final_df = pd.concat(all_dataframes, axis=1)
+        final_df.to_excel(f'{self.league_dir}_reports/{file_name}', index=False)
+
+    def format_excel(self, file_name='comparison.xlsx'):
+        # Wczytaj plik Excela
+        df = pd.read_excel(f'{self.league_dir}_reports/{file_name}')
+
+        # Zapisz DataFrame do pliku Excela
+        with pd.ExcelWriter(f'{self.league_dir}_reports/{file_name}_formatted.xlsx', engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='Sheet1')
+            workbook = writer.book
+            worksheet = writer.sheets['Sheet1']
             
+            # Ustaw szerokość kolumn na podstawie długości tekstu
+            for i, column in enumerate(df.columns):
+                column_width = max(df[column].astype(str).map(len).max(), len(column))
+                worksheet.set_column(i, i, column_width)
+
+        # Zapisz DataFrame do pliku Excela
+        df.to_excel(f'{self.league_dir}_reports/{file_name}_formatted.xlsx', index=False)
+
+    
+            # Szymon Jopek
 
 
     
 # squad_analyzer = SquadAnalyzer(team_excel_file='pogoń.xlsx')
-squad_analyzer = SquadAnalyzer(league_dir='ekstraklasa_old')
+squad_analyzer = SquadAnalyzer(league_dir='ekstraklasa')
 # squad = squad_analyzer.get_squad()
 # print(squad_analyzer.get_formation_strength('4-2-3-1'))
 # squad_analyzer.analyze_all_positions()
 # squad_analyzer.rank_positions_in_team('pogoń')
-squad_analyzer.rank_positions_in_all_teams()
+# squad_analyzer.rank_positions_in_all_teams()
+# squad_analyzer.compare_teams()
+squad_analyzer.format_excel()
