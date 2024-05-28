@@ -14,8 +14,8 @@ formations_dict = {
 
 class FMAlgorithm:
 
-    def __init__(self, whole_league=False, calculate_other_positions=False):
-        self.league_directory = 'ekstraklasa'
+    def __init__(self, whole_league=False, calculate_other_positions=False, league_directory='ekstraklasa'):
+        self.league_directory = league_directory
         self.calculate_other_positions = calculate_other_positions
 
         self.positions_file = 'positions.json'
@@ -90,7 +90,7 @@ class FMAlgorithm:
             max_strength_role = None
 
             for role, strength in position_strength.items():
-                player_strength[role] += strength
+                player_strength[role] = strength
                 if strength > max_strength:
                     max_strength = strength
                     max_strength_role = role
@@ -142,7 +142,7 @@ class FMAlgorithm:
     
     
 
-algorithm = FMAlgorithm(whole_league=False, calculate_other_positions=False)
+algorithm = FMAlgorithm(whole_league=True, calculate_other_positions=False, league_directory='ekstraklasa_old')
 # algorithm = FMAlgorithm()
-print(algorithm.save_team_strength(algorithm.calculate_team_strength()))
+# print(algorithm.save_team_strength(algorithm.calculate_team_strength()))
 algorithm.calculate_strength_of_league()
