@@ -42,6 +42,9 @@ class TransferEngine:
     def get_targets(self, **params):
         target_df = self.merged_df.copy()
 
+        if not params.get('position'):
+            raise ValueError('Please provide a position to search for.')
+
         if params.get('role'):
             role_to_search = f"{params['position']} {params['role']}"
         else:
@@ -75,7 +78,7 @@ class TransferEngine:
             if team in row.values:
                 found_str += 1
                 if found_str == strength or row.equals(df.iloc[-1]):
-                    return index
+                    return index + 1
 
         return None
 
@@ -83,4 +86,4 @@ class TransferEngine:
 engine = TransferEngine(['role_rankings_2.xlsx', 'I_liga_polska_ranks.xlsx'])
 # test_engine = TransferEngine(['ekstraklasa_reports/Pogoń_report.xlsx', 'ekstraklasa_reports/Lech_report.xlsx'])
 
-print(engine.get_targets(position='GK', role='gkd', team='Polonia', strength=1))
+print(engine.get_targets(position='GK', role='gkd', team='Łks', strength=1))
