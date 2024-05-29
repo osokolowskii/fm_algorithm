@@ -18,8 +18,7 @@ class TransferEngine:
             df = pd.read_excel(file)
             self.position_dfs[file] = df
 
-        self.merged_dfs = self.merge_dfs()
-        self.get_players()
+        self.merged_df = self.merge_dfs()
 
     def merge_dfs(self):
         merged_df = pd.concat(self.position_dfs.values(), ignore_index=True)
@@ -40,9 +39,48 @@ class TransferEngine:
 
         return merged_df
 
-    def get_players(self):
-        print(self.merged_dfs)
+    def get_targets(self, **params):
+        target_df = self.merged_df.copy()
+
+        if params.get('role'):
+            role_to_search = f"{params['position']} {params['role']}"
+        else:
+            role_to_search = params['position']
+
+
+        role_columns = [col for col in target_df.columns if col.startswith(role_to_search)]
+        new_df = target_df[role_columns]
+        new_df = new_df.dropna()
+
+        if params.get('team'):
+            if not params.get('strength'):
+                raise ValueError('Please provide a strength value when specifying a team.')
+            team_to_search = params['team']
+            row_to_cut_from = self.find_team_row(new_df, team_to_search, params['strength'])
+            new_df = new_df.iloc[:row_to_cut_from]
+
+        if not params.get('role'):
+            num_cols_per_df = 3
+            sub_dfs = [new_df.iloc[:, i:i+num_cols_per_df] for i in range(0, len(new_df.columns), num_cols_per_df)]
+            sub_dfs = [df.sort_values(by=df.columns[2]) for df in sub_dfs]
+            new_df = pd.concat(sub_dfs, axis=1)
+        else:
+            new_df = new_df.sort_values(by=new_df.columns[2], ascending=False)
+
+        return new_df
+    
+    def find_team_row(self, df, team, strength):
+        found_str = 0
+        for index, row in df.iterrows():
+            if team in row.values:
+                found_str += 1
+                if found_str == strength or row.equals(df.iloc[-1]):
+                    return index
+
+        return None
 
     
-# engine = TransferEngine(['role_rankings_2.xlsx'])
-test_engine = TransferEngine(['ekstraklasa_reports/Pogoń_report.xlsx', 'ekstraklasa_reports/Lech_report.xlsx'])
+engine = TransferEngine(['role_rankings_2.xlsx', 'I_liga_polska_ranks.xlsx'])
+# test_engine = TransferEngine(['ekstraklasa_reports/Pogoń_report.xlsx', 'ekstraklasa_reports/Lech_report.xlsx'])
+
+print(engine.get_targets(position='GK', role='gkd', team='Polonia', strength=1))

@@ -144,7 +144,7 @@ class FMAlgorithm:
     
     
 
-algorithm = FMAlgorithm(whole_league=True, calculate_other_positions=False, league_directory='ekstraklasa_old')
+algorithm = FMAlgorithm(whole_league=True, calculate_other_positions=False, league_directory='I_liga_polska')
 # algorithm = FMAlgorithm()
 # print(algorithm.save_team_strength(algorithm.calculate_team_strength()))
 algorithm.calculate_strength_of_league()

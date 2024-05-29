@@ -46,7 +46,7 @@ class SquadAnalyzer:
         for squad_dict in self.squads:
             for team, squad in squad_dict.items():
                 for i, player in squad.iterrows():
-                    if not pd.isna(player[role]):
+                    if player.get(role) and not pd.isna(player[role]):
                         roles_strength.append([team, player['Name'], player[role]])
 
         # Sortowanie listy według siły gracza w roli (drugi element listy)
@@ -88,7 +88,7 @@ class SquadAnalyzer:
             all_positions_df = pd.concat([all_positions_df, position_df], axis=1)
 
         # Save the results to an Excel file
-        all_positions_df.to_excel('role_rankings_2.xlsx', index=False)
+        all_positions_df.to_excel(f'{self.league_dir}_ranks.xlsx', index=False)
 
 
     # SECTION OF PREPARING TEAM REPORT
@@ -222,10 +222,10 @@ class SquadAnalyzer:
 
     
 # squad_analyzer = SquadAnalyzer(team_excel_file='pogoń.xlsx')
-squad_analyzer = SquadAnalyzer(league_dir='ekstraklasa')
+squad_analyzer = SquadAnalyzer(league_dir='I_liga_polska')
 # squad = squad_analyzer.get_squad()
 # print(squad_analyzer.get_formation_strength('4-2-3-1'))
 squad_analyzer.analyze_all_positions()
-squad_analyzer.rank_positions_in_team('pogoń')
+# squad_analyzer.rank_positions_in_team('pogoń')
 # squad_analyzer.rank_positions_in_all_teams()
 # squad_analyzer.compare_teams()
