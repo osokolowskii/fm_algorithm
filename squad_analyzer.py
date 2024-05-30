@@ -1,7 +1,6 @@
 import json
 import os
 import pandas as pd
-
 from collections import defaultdict
 
 class SquadAnalyzer:
@@ -29,17 +28,10 @@ class SquadAnalyzer:
                 squads.append({team.split('.')[0].capitalize(): squad_rawdata})
         return squads
         
-    
+        
     def get_squad(self):
         squad_rawdata = pd.read_excel(self.team_excel_file)
         self.squad_rawdata = squad_rawdata
-    
-    def get_formation_strength(self, formation_to_analyze):
-        # TO BE IMPLEMENTED
-        team_strength = {}
-        for i, player in self.squad_rawdata.iterrows():
-            team_strength[player['Name']] = player['Strength']
-        return team_strength
     
     def rank_teams_in_role(self, role):
         roles_strength = []
@@ -49,13 +41,13 @@ class SquadAnalyzer:
                     if player.get(role) and not pd.isna(player[role]):
                         roles_strength.append([team, player['Name'], player[role]])
 
-        # Sortowanie listy według siły gracza w roli (drugi element listy)
+        # Sort the list by player strength in the role (second element in the list)
         roles_strength.sort(key=lambda x: x[2], reverse=True)
 
         return roles_strength
     
     def rank_teams_in_position(self, position):
-    # Create an empty DataFrame to store the results
+        # Create an empty DataFrame to store the results
         result_df = pd.DataFrame()
 
         # Iterate through all roles in the given position
@@ -89,6 +81,7 @@ class SquadAnalyzer:
 
         # Save the results to an Excel file
         all_positions_df.to_excel(f'{self.league_dir}_ranks.xlsx', index=False)
+
 
 
     # SECTION OF PREPARING TEAM REPORT
@@ -158,7 +151,7 @@ class SquadAnalyzer:
             player_roles_df.to_excel(writer, sheet_name='Players', index=False)
 
     def rank_positions_in_all_teams(self):
-        # Przejdź przez wszystkie drużyny w lidze
+        # Iterate through all teams in the league
         for squad_dict in self.squads:
             for team in squad_dict:
                 self.rank_positions_in_team(team)
@@ -168,19 +161,19 @@ class SquadAnalyzer:
 
         position_dataframes = {}
 
-        # Przejdź przez wszystkie pozycje
+        # Iterate through all positions
         for position in self.positions_with_roles:
             pos = position['Position']
             alt = position.get('Alternative')
             position_dataframes[pos] = pd.DataFrame()
 
-            # Dodaj nagłówki dla głównej pozycji
+            # Add headers for the main position
             df[pos] = []
             df[f'{pos} Team'] = []
             df[f'{pos} Ranking'] = []
             df[f'{pos} Best Role'] = []
 
-            # Jeśli istnieje alternatywna pozycja, dodaj dla niej nagłówki
+            # If there is an alternative position, add headers for it
             if alt:
                 position_dataframes[alt] = pd.DataFrame()
                 df[alt] = []
@@ -190,29 +183,29 @@ class SquadAnalyzer:
 
         for file in os.listdir(f'{self.league_dir}_reports'):
             if file.endswith('_report.xlsx'):
-                # Wczytaj raport drużyny do DataFrame
+                # Load the team report into a DataFrame
                 team_report = pd.read_excel(f'{self.league_dir}_reports/{file}')
                 team_positions = team_report.columns[::3]
                 team_name = file.replace('_report.xlsx', '')
 
-                # Przejdź przez wszystkie pozycje w raporcie drużyny
+                # Iterate through all positions in the team report
                 for pos in team_positions:
-                    # Jeśli DataFrame dla pozycji istnieje, dodaj dane do niego
+                    # If a DataFrame for the position exists, add the data to it
                     if pos in position_dataframes:
                         position_data = team_report[[pos, f'{pos} Ranking', f'{pos} Best Role']].copy()
                         position_data = position_data.dropna()
 
-                        # Dodaj kolumnę z nazwą drużyny
+                        # Add a column with the team name
                         position_data[f'{pos} Team'] = team_name
 
-                        # Jeśli places jest różne od zera, ogranicz liczbę piłkarzy
+                        # If places is not zero, limit the number of players
                         if places != 0:
                             position_data = position_data.head(places)
 
                         position_dataframes[pos] = pd.concat([position_dataframes[pos], position_data])
                 
 
-        # Zapisz DataFrame do pliku Excela
+        # Save the DataFrame to an Excel file
         for position_name, position_dataframe in position_dataframes.items():
             position_dataframes[position_name] = position_dataframe.sort_values(by=f'{position_name} Ranking', ascending=False)
         all_dataframes = [df.reset_index(drop=True) for pos, df in position_dataframes.items()]
@@ -224,7 +217,6 @@ class SquadAnalyzer:
 # squad_analyzer = SquadAnalyzer(team_excel_file='pogoń.xlsx')
 squad_analyzer = SquadAnalyzer(league_dir='I_liga_polska')
 # squad = squad_analyzer.get_squad()
-# print(squad_analyzer.get_formation_strength('4-2-3-1'))
 squad_analyzer.analyze_all_positions()
 # squad_analyzer.rank_positions_in_team('pogoń')
 # squad_analyzer.rank_positions_in_all_teams()

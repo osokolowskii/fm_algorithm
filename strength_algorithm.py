@@ -114,10 +114,25 @@ class FMAlgorithm:
     def calculate_team_strength(self):
         team_strength = defaultdict(lambda: 0)
         for i, player in self.squad_rawdata.iterrows():
-            player_strength = self.calculate_strength_of_player(player)
-            team_strength[player['Name']] = player_strength
+            team_strength[player['Name']] = self.calculate_strength_of_player(player)
         return team_strength
     
+    def save_player_strengths(self, team_strength):
+        player_dfs = []
+        for player_name, player_strengths in team_strength.items():
+            player_data = []
+            for role, strength in player_strengths.items():
+                if type(strength) == float:
+                    player_data.append({
+                        f"{player_name} role": role,
+                        f"{player_name} strength": float(strength)
+                    })
+            player_df = pd.DataFrame(player_data)
+            player_df = player_df.sort_values(by=f"{player_name} strength", ascending=False).reset_index(drop=True)
+            player_dfs.append(player_df)
+        player_strength_df = pd.concat(player_dfs, axis=1)
+        return player_strength_df
+
     def save_team_strength(self, team_strength):
         data = [{'Name': name, **strengths} for name, strengths in team_strength.items()]
         df = pd.DataFrame(data)
@@ -130,8 +145,12 @@ class FMAlgorithm:
         cols = ['Name'] + sorted(best_role_cols) + sorted(other_cols)
         df = df[cols]
 
+        player_strength_df = self.save_player_strengths(team_strength)
+
         team_name = self.team_file.split('/')[-1].split('.')[0]
-        df.to_excel(f'{team_name}.xlsx', index=False)
+        with pd.ExcelWriter(f'{team_name}.xlsx') as writer:
+            df.to_excel(writer, sheet_name='Team Strength', index=False)
+            player_strength_df.to_excel(writer, sheet_name='Player Strengths', index=False)
 
     def calculate_strength_of_league(self):
         for file in os.listdir(self.league_directory):
@@ -144,7 +163,7 @@ class FMAlgorithm:
     
     
 
-algorithm = FMAlgorithm(whole_league=True, calculate_other_positions=False, league_directory='I_liga_polska')
+algorithm = FMAlgorithm(whole_league=True, calculate_other_positions=False, league_directory='arg')
 # algorithm = FMAlgorithm()
 # print(algorithm.save_team_strength(algorithm.calculate_team_strength()))
 algorithm.calculate_strength_of_league()

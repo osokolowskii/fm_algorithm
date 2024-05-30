@@ -3,6 +3,11 @@ from collections import defaultdict
 import json
 import pandas as pd
 
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', None)
+pd.set_option('display.max_colwidth', None)
+
 class TransferEngine:
     def __init__(self, files_to_analyze):
         self.files_to_analyze = files_to_analyze
@@ -35,7 +40,7 @@ class TransferEngine:
         merged_df = pd.concat(sub_dfs, axis=1)
 
         # Reset the index of the DataFrame
-        merged_df = merged_df.reset_index(drop=True)
+        merged_df.reset_index(drop=True, inplace=True)
 
         return merged_df
 
@@ -50,25 +55,28 @@ class TransferEngine:
         else:
             role_to_search = params['position']
 
-
         role_columns = [col for col in target_df.columns if col.startswith(role_to_search)]
         new_df = target_df[role_columns]
         new_df = new_df.dropna()
+        new_df.reset_index(drop=True, inplace=True)
 
         if params.get('team'):
             if not params.get('strength'):
                 raise ValueError('Please provide a strength value when specifying a team.')
             team_to_search = params['team']
-            row_to_cut_from = self.find_team_row(new_df, team_to_search, params['strength'])
-            new_df = new_df.iloc[:row_to_cut_from]
 
         if not params.get('role'):
             num_cols_per_df = 3
             sub_dfs = [new_df.iloc[:, i:i+num_cols_per_df] for i in range(0, len(new_df.columns), num_cols_per_df)]
             sub_dfs = [df.sort_values(by=df.columns[2]) for df in sub_dfs]
+            sub_dfs = [df.reset_index(drop=True) for df in sub_dfs]  # Reset the index of each DataFrame in sub_dfs
             new_df = pd.concat(sub_dfs, axis=1)
         else:
-            new_df = new_df.sort_values(by=new_df.columns[2], ascending=False)
+            new_df.sort_values(by=new_df.columns[2], inplace=True, ascending=False)
+            new_df.reset_index(drop=True, inplace=True)
+        row_to_cut_from = self.find_team_row(new_df, team_to_search, params['strength'])
+        new_df = new_df.iloc[:row_to_cut_from]
+        new_df = new_df.reset_index(drop=True)
 
         return new_df
     
@@ -81,9 +89,12 @@ class TransferEngine:
                     return index + 1
 
         return None
+    
+    def compare_players(self, player_1, player_2):
+        pass
 
     
 engine = TransferEngine(['role_rankings_2.xlsx', 'I_liga_polska_ranks.xlsx'])
 # test_engine = TransferEngine(['ekstraklasa_reports/Pogoń_report.xlsx', 'ekstraklasa_reports/Lech_report.xlsx'])
 
-print(engine.get_targets(position='GK', role='gkd', team='Łks', strength=1))
+print(engine.get_targets(position='AM (C)', role='ama', team='Pogoń', strength=2))
