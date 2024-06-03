@@ -71,11 +71,6 @@ class TransferEngine:
         new_df = new_df.dropna()
         new_df.reset_index(drop=True, inplace=True)
 
-        if params.get('team'):
-            if not params.get('strength'):
-                raise ValueError('Please provide a strength value when specifying a team.')
-            team_to_search = params['team']
-
         if not params.get('role'):
             num_cols_per_df = 3
             sub_dfs = [new_df.iloc[:, i:i+num_cols_per_df] for i in range(0, len(new_df.columns), num_cols_per_df)]
@@ -85,9 +80,13 @@ class TransferEngine:
         else:
             new_df.sort_values(by=new_df.columns[2], inplace=True, ascending=False)
             new_df.reset_index(drop=True, inplace=True)
-        row_to_cut_from = self.find_team_row(new_df, team_to_search, params['strength'])
-        new_df = new_df.iloc[:row_to_cut_from]
-        new_df = new_df.reset_index(drop=True)
+
+        if params.get('team'):
+            if not params.get('strength'):
+                raise ValueError('Please provide a strength value when specifying a team.')
+            row_to_cut_from = self.find_team_row(new_df, params['team'], params['strength'])
+            new_df = new_df.iloc[:row_to_cut_from]
+            new_df = new_df.reset_index(drop=True)
 
         return new_df
     
@@ -109,3 +108,8 @@ class TransferEngine:
                     return index + 1
 
         return None
+    
+    #TODO: write compare_players function. it will accept 2 player names and return a DataFrame with their stats.
+    # It will compare them only in positions where they both play, and also attributes such as age, height, weight, salary and value.
+    # It will output the DataFrame with the comparison of both players, for example -5 means that player 1 is better by 5 in that role.
+    # It will also output the total difference in the last row of the DataFrame.
