@@ -10,6 +10,11 @@ pd.set_option('display.max_colwidth', None)
 
 class TransferEngine:
     def __init__(self, files_to_analyze):
+        """
+        Initialize the TransferEngine.
+
+        :param files_to_analyze: Files to analyze.
+        """
         self.files_to_analyze = files_to_analyze
 
 
@@ -26,25 +31,31 @@ class TransferEngine:
         self.merged_df = self.merge_dfs()
 
     def merge_dfs(self):
+        """
+        Merge the DataFrames in self.position_dfs into a single DataFrame.
+
+        Dataframes are at first splitted by columns of 3, because each 3 column is one role.
+        We do not want to merge the DataFrames by rows, because we want to keep the roles separated.
+        After splitting, we can remove NaN values from each sub-DataFrame and then concatenate them.
+
+        :return: Merged DataFrame.
+        """
         merged_df = pd.concat(self.position_dfs.values(), ignore_index=True)
-        # Define the number of columns for each sub-DataFrame
         num_cols_per_df = 3
-
-        # Split the DataFrame into a list of smaller DataFrames
         sub_dfs = [merged_df.iloc[:, i:i+num_cols_per_df] for i in range(0, len(merged_df.columns), num_cols_per_df)]
-
-        # Remove rows with all NaN values from each sub-DataFrame
         sub_dfs = [df.dropna(how='all') for df in sub_dfs]
-
-        # Concatenate the sub-DataFrames back together
         merged_df = pd.concat(sub_dfs, axis=1)
-
-        # Reset the index of the DataFrame
         merged_df.reset_index(drop=True, inplace=True)
-
         return merged_df
 
     def get_targets(self, **params):
+        """
+        Get the targets based on the provided parameters.
+
+        :param params: Parameters to search for.
+
+        :return: DataFrame with the targets.
+        """
         target_df = self.merged_df.copy()
 
         if not params.get('position'):
@@ -81,6 +92,15 @@ class TransferEngine:
         return new_df
     
     def find_team_row(self, df, team, strength):
+        """
+        Method to find team row in the DataFrame. It is used, if we want to get n-th best player from team.
+
+        :param df: DataFrame to search in.
+        :param team: Team to search for.
+        :param strength: Strength of the player to search for.
+
+        :return: Index of the row in the DataFrame.
+        """
         found_str = 0
         for index, row in df.iterrows():
             if team in row.values:
@@ -89,12 +109,3 @@ class TransferEngine:
                     return index + 1
 
         return None
-    
-    def compare_players(self, player_1, player_2):
-        pass
-
-    
-engine = TransferEngine(['role_rankings_2.xlsx', 'I_liga_polska_ranks.xlsx'])
-# test_engine = TransferEngine(['ekstraklasa_reports/Pogoń_report.xlsx', 'ekstraklasa_reports/Lech_report.xlsx'])
-
-print(engine.get_targets(position='AM (C)', role='ama', team='Pogoń', strength=2))
