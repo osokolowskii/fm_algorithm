@@ -137,13 +137,19 @@ class FMAlgorithm:
 
             for role, strength in position_strength.items():
                 player_strength[role] = strength
-                if strength > max_strength:
+                if (strength > max_strength and sign == 1) or (strength < max_strength and sign == -1):
                     max_strength = strength
-                    max_strength_role = role
+                    max_strength_role = role if sign == 1 else f'({role})'
 
             player_strength[f'BestRole_{position}'] = max_strength_role
-            player_strength['Positions'] = player_positions
-            player_strength['Formations'] = self.get_formations_from_positions(player_positions)
+
+        player_strength.update({
+            'Positions': player_positions,
+            'Formations': self.get_formations_from_positions(player_positions),
+            'Value': player['Transfer Value'],
+            'Age': player['Age'],
+            'Salary': player['Salary'],
+        })
 
         return player_strength
     
@@ -171,11 +177,12 @@ class FMAlgorithm:
             team_strength[player['Name']] = self.calculate_strength_of_player(player)
         return team_strength
     
-    def save_player_strengths(self, team_strength):
+    def save_player_strengths(self, team_strength, sort_type='classic'):
         """
         Method to save player strengths to DataFrame. Then it can be saved to Excel file.
 
         :param team_strength: Dictionary with team strength.
+        :param sort_type: Sorting method. Can be 'classic', 'separately', or 'absolute'.
 
         :return: DataFrame with player strengths.
         """
@@ -189,8 +196,23 @@ class FMAlgorithm:
                         f"{player_name} strength": float(strength)
                     })
             player_df = pd.DataFrame(player_data)
-            player_df = player_df.sort_values(by=f"{player_name} strength", ascending=False).reset_index(drop=True)
+
+            if sort_type == 'classic':
+                # Sort without editing any values (20 > 10 > -8 > -18)
+                player_df = player_df.sort_values(by=f"{player_name} strength", ascending=False)
+            elif sort_type == 'separately':
+                # Sort separately - positive values first and descending, then negative values ascending (20 > 10 > -18 > -8)
+                player_df_positive = player_df[player_df[f"{player_name} strength"] >= 0].sort_values(by=f"{player_name} strength", ascending=False)
+                player_df_negative = player_df[player_df[f"{player_name} strength"] < 0].sort_values(by=f"{player_name} strength")
+                player_df = pd.concat([player_df_positive, player_df_negative])
+            elif sort_type == 'absolute':
+                # Sort separately with absolute values (20 > -18 > 10 > -8)
+                player_df['AbsoluteStrength'] = player_df[f"{player_name} strength"].abs()
+                player_df = player_df.sort_values(by='AbsoluteStrength', ascending=False).drop(columns=['AbsoluteStrength'])
+
+            player_df = player_df.reset_index(drop=True)
             player_dfs.append(player_df)
+
         player_strength_df = pd.concat(player_dfs, axis=1)
         return player_strength_df
 
@@ -211,9 +233,9 @@ class FMAlgorithm:
         cols = ['Name'] + sorted(best_role_cols) + sorted(other_cols)
         df = df[cols]
 
-        player_strength_df = self.save_player_strengths(team_strength)
+        player_strength_df = self.save_player_strengths(team_strength, sort_type='classic')
 
-        team_name = self.team_file.split('/')[-1].split('.')[0]
+        team_name = self.team_file.split('.')[0]
         with pd.ExcelWriter(f'{team_name}.xlsx') as writer:
             df.to_excel(writer, sheet_name='Team Strength', index=False)
             player_strength_df.to_excel(writer, sheet_name='Player Strengths', index=False)
