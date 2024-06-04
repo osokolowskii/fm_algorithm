@@ -4,7 +4,7 @@ import pandas as pd
 from collections import defaultdict
 
 class SquadAnalyzer:
-    def __init__(self, league_dir=False, only_positive=True, particular_teams=False):
+    def __init__(self, league_dir=False, only_positive=True):
         """
         Initialize the SquadAnalyzer class.
 
@@ -91,7 +91,7 @@ class SquadAnalyzer:
 
         return result_df
 
-    def analyze_all_positions(self):
+    def prepare_league_sheet(self):
         """
         Analyze all positions and save the results to an Excel file.
         """
@@ -106,6 +106,3 @@ class SquadAnalyzer:
             all_positions_df = pd.concat([all_positions_df, position_df], axis=1)
 
         all_positions_df.to_excel(f'{self.league_dir}_report.xlsx', sheet_name='League Summarize', index=False)
-
-squad_analyzer = SquadAnalyzer(league_dir='ekstraklasa', only_positive=False)
-squad_analyzer.analyze_all_positions()

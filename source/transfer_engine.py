@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+import os
 import json
 import pandas as pd
 
@@ -9,13 +10,13 @@ pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
 
 class TransferEngine:
-    def __init__(self, files_to_analyze):
+    def __init__(self, directory_to_analyze):
         """
         Initialize the TransferEngine.
 
         :param files_to_analyze: Files to analyze.
         """
-        self.files_to_analyze = files_to_analyze
+        self.directory_to_analyze = directory_to_analyze
 
 
         self.position_with_roles_file = 'positions_with_roles.json'
@@ -24,9 +25,10 @@ class TransferEngine:
 
         self.position_dfs = defaultdict(lambda: pd.DataFrame())
 
-        for file in self.files_to_analyze:
-            df = pd.read_excel(file)
-            self.position_dfs[file] = df
+        for file in os.listdir(self.directory_to_analyze):
+            if file.endswith(".xlsx"):
+                df = pd.read_excel(os.path.join(self.directory_to_analyze, file))
+                self.position_dfs[file] = df
 
         self.merged_df = self.merge_dfs()
 
@@ -72,25 +74,21 @@ class TransferEngine:
         new_df.reset_index(drop=True, inplace=True)
 
         if not params.get('role'):
-            num_cols_per_df = 3
+            num_cols_per_df = 6
             sub_dfs = [new_df.iloc[:, i:i+num_cols_per_df] for i in range(0, len(new_df.columns), num_cols_per_df)]
+            sub_dfs = [self.apply_filters_on_df(df, params, role_to_search) for df in sub_dfs]
             sub_dfs = [df.sort_values(by=df.columns[2]) for df in sub_dfs]
-            sub_dfs = [df.reset_index(drop=True) for df in sub_dfs]  # Reset the index of each DataFrame in sub_dfs
+            sub_dfs = [df.reset_index(drop=True) for df in sub_dfs]
             new_df = pd.concat(sub_dfs, axis=1)
         else:
+            new_df = self.apply_filters_on_df(new_df, params, role_to_search)
             new_df.sort_values(by=new_df.columns[2], inplace=True, ascending=False)
             new_df.reset_index(drop=True, inplace=True)
 
-        if params.get('team'):
-            if not params.get('strength'):
-                raise ValueError('Please provide a strength value when specifying a team.')
-            row_to_cut_from = self.find_team_row(new_df, params['team'], params['strength'])
-            new_df = new_df.iloc[:row_to_cut_from]
-            new_df = new_df.reset_index(drop=True)
 
         return new_df
     
-    def find_team_row(self, df, team, strength):
+    def find_row_to_cut_from(self, df, team, strength):
         """
         Method to find team row in the DataFrame. It is used, if we want to get n-th best player from team.
 
@@ -109,7 +107,42 @@ class TransferEngine:
 
         return None
     
-    #TODO: write compare_players function. it will accept 2 player names and return a DataFrame with their stats.
-    # It will compare them only in positions where they both play, and also attributes such as age, height, weight, salary and value.
-    # It will output the DataFrame with the comparison of both players, for example -5 means that player 1 is better by 5 in that role.
-    # It will also output the total difference in the last row of the DataFrame.
+    def apply_filters_on_df(self, df, params, role_to_search):
+        new_df = df.copy()
+        if not params.get('role'):
+            role_to_search = df.columns[0].replace(' Team', '')
+        if params.get('team'):
+            if not params.get('strength'):
+                raise ValueError('Please provide a strength value when specifying a team.')
+            row_to_cut_from = self.find_row_to_cut_from(df, params['team'], params['strength'])
+            new_df = new_df.iloc[:row_to_cut_from]
+            new_df = new_df.reset_index(drop=True)
+
+        if params.get('maximum_value'):
+            def convert_value_to_float(value_range):
+                if value_range == 'Not for Sale':
+                    return 0
+                if '-' in value_range:
+                    max_value_str = value_range.split('-')[1].strip()
+                    max_value = float(max_value_str.replace('\xa0zl', '').replace('.', '').replace('M', '000000').replace('K', '000'))
+                    return max_value
+
+            new_df['max_value'] = new_df[f'{role_to_search} Value'].apply(convert_value_to_float)
+            new_df.sort_values(by='max_value', ascending=False, inplace=True)
+            new_df = new_df[new_df['max_value'] < params['maximum_value']]
+            new_df = new_df.reset_index(drop=True)
+            new_df.drop(columns=['max_value'], inplace=True)
+
+        if params.get('maximum_age'):
+            new_df = new_df[new_df[f'{role_to_search} Age'] <= params['maximum_age']]
+            new_df = new_df.reset_index(drop=True)
+
+        if params.get('minimum_age'):
+            new_df = new_df[new_df[f'{role_to_search} Age'] >= params['minimum_age']]
+            new_df = new_df.reset_index(drop=True)
+
+        if params.get('only_for_sale'):
+            new_df = new_df[new_df[f'{role_to_search} Value'] != 'Not for Sale']
+            new_df = new_df.reset_index(drop=True)
+        
+        return new_df

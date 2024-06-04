@@ -1,6 +1,21 @@
 
-*.xlsx
 *.html
 *.xlsx#
 /macro
 *.txt
+/2_bundesliga
+/2_bundesliga_reports
+/3_liga_polska
+/3_liga_polska_reports
+/championship
+/championship_reports
+/clj
+/clj_reports
+/free_agents
+/free_agents_reports
+/I_liga_polska
+/II_liga_polska
+/league_one
+/league_one_reports
+!**/*.xlsx
+!*.xlsx

@@ -7,10 +7,7 @@ FM Algorithm is a program designed for personal use to calculate the attributes 
 - Calculate the attributes of squads and players in Football Manager.
 - Compare the strength of the league, individual players, teams, and positions.
 - Generate Excel reports for analysis and evaluation.
-
-## Upcoming Features
-- Addition of a feature to compare two specific players in their respective positions.
-- Graphical interface for a more user-friendly experience.
+- Finding specific targets by GUI.
 
 ## Installation
 1. Clone the repository: `git clone https://github.com/your-username/fm-algorithm.git`
