@@ -14,7 +14,7 @@ formations_dict = {
 
 class FMAlgorithm:
 
-    def __init__(self, whole_league=False, calculate_other_positions=False, league_directory='ekstraklasa', team_file='ekstraklasa/pogoń.html'):
+    def __init__(self, whole_league=False, calculate_other_positions=False, league_directory='ekstraklasa', team_file='ekstraklasa/pogoń.html', lang='en', save_attributes=False):
         """
         Initialize the FMAlgorithm.
 
@@ -25,6 +25,8 @@ class FMAlgorithm:
         """
         self.league_directory = league_directory
         self.calculate_other_positions = calculate_other_positions
+        self.lang = lang
+        self.save_attributes = save_attributes
 
         self.positions_file = 'positions.json'
         self.position_with_roles_file = 'positions_with_roles.json'
@@ -43,6 +45,7 @@ class FMAlgorithm:
 
         self.roles_for_all_positions = {item['Position']: item['Roles'] for item in self.positions_with_roles}
         self.roles_values = {item['RoleCode']: {k: v for k, v in item.items() if type(v) == int and v > 0} for item in self.positions}
+        self.all_attributes = list(attr for attr in self.positions[0].keys() if attr not in ['Role', 'RoleCode'])
 
     def get_positions_list(self, player_positions):
         """
@@ -151,6 +154,12 @@ class FMAlgorithm:
             'Salary': player['Salary'],
         })
 
+        if player['Club']:
+            player_strength['Club'] = player['Club']
+
+        if self.save_attributes:
+            player_strength.update({attr: player[attr] for attr in self.all_attributes})
+
         return player_strength
     
     def get_formations_from_positions(self, player_positions):
@@ -250,3 +259,12 @@ class FMAlgorithm:
                 self.squad_rawdata_list = pd.read_html(self.team_file, header=0, encoding="utf-8", keep_default_na=False)
                 self.squad_rawdata = self.squad_rawdata_list[0]
                 self.save_team_strength(self.calculate_team_strength())
+
+            
+algorithm = FMAlgorithm(
+    whole_league=True,
+    calculate_other_positions=False,
+    league_directory='lbs',
+    save_attributes=True
+)
+algorithm.calculate_strength_of_league()

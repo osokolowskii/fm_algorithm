@@ -79,7 +79,8 @@ class TransferEngine:
             sub_dfs = [self.apply_filters_on_df(df, params, role_to_search) for df in sub_dfs]
             sub_dfs = [df.sort_values(by=df.columns[2]) for df in sub_dfs]
             sub_dfs = [df.reset_index(drop=True) for df in sub_dfs]
-            new_df = pd.concat(sub_dfs, axis=1)
+            # new_df = pd.concat(sub_dfs, axis=1)
+            new_df = self.prepare_position_df(sub_dfs)
         else:
             new_df = self.apply_filters_on_df(new_df, params, role_to_search)
             new_df.sort_values(by=new_df.columns[2], inplace=True, ascending=False)
@@ -124,12 +125,12 @@ class TransferEngine:
                     return 0
                 if '-' in value_range:
                     max_value_str = value_range.split('-')[1].strip()
-                    max_value = float(max_value_str.replace('\xa0zl', '').replace('.', '').replace('M', '000000').replace('K', '000'))
+                    max_value = float(max_value_str.replace('\xa0zl', '').replace('.', '').replace('M', '000000').replace('K', '000').replace('B', '000000000').replace(',', ''))
                     return max_value
 
             new_df['max_value'] = new_df[f'{role_to_search} Value'].apply(convert_value_to_float)
             new_df.sort_values(by='max_value', ascending=False, inplace=True)
-            new_df = new_df[new_df['max_value'] < params['maximum_value']]
+            new_df = new_df[new_df['max_value'] <= params['maximum_value']]
             new_df = new_df.reset_index(drop=True)
             new_df.drop(columns=['max_value'], inplace=True)
 
@@ -144,5 +145,83 @@ class TransferEngine:
         if params.get('only_for_sale'):
             new_df = new_df[new_df[f'{role_to_search} Value'] != 'Not for Sale']
             new_df = new_df.reset_index(drop=True)
+
+        if params.get('minimum_strength'):
+            new_df = new_df[new_df[f'{role_to_search} Strength'] >= params['minimum_strength']]
+            new_df = new_df.reset_index(drop=True)
         
         return new_df
+    
+    def prepare_position_df(self, sub_dfs):
+        """
+        Prepare the DataFrame with the positions.
+
+        :param df: DataFrame to prepare.
+
+        :return: Prepared DataFrame.
+        """
+        new_df = sub_dfs[0].copy()
+        for df in sub_dfs[1:]:
+            new_df = pd.concat([new_df, df.iloc[:, 2]], axis=1)
+
+        # Change column names to only include the role for columns from the 7th to the end
+        new_df.columns = list(new_df.columns[:6]) + [col.split(' Strength')[0].split(' ')[-1] for col in new_df.columns[6:]]
+
+        # Select the columns to calculate max_strength
+        max_strength_columns = [new_df.columns[2]] + list(new_df.columns[6:])
+
+        new_df['average_strength'] = new_df[max_strength_columns].mean(axis=1)
+
+        # Add the max_strength column
+        new_df['max_strength'] = new_df[max_strength_columns].max(axis=1)
+
+        # Add the max_strength_role column
+        new_df['max_strength_role'] = new_df[max_strength_columns].idxmax(axis=1)
+
+        return new_df
+    
+    def compare_players(self, player_1, player_2, limit_to=None):
+        num_cols_per_df = 6
+        sub_dfs = [self.merged_df.iloc[:, i:i+num_cols_per_df] for i in range(0, len(self.merged_df.columns), num_cols_per_df)]
+        
+        if limit_to is not None:
+            players_dfs = [df for df in sub_dfs if player_1 in df.iloc[:, 1].values and player_2 in df.iloc[:, 1].values and df.columns[0].startswith(limit_to)]
+        else:
+            players_dfs = [df for df in sub_dfs if player_1 in df.iloc[:, 1].values and player_2 in df.iloc[:, 1].values]
+
+        players_dfs = [df[df.iloc[:, 1].isin([player_1, player_2])] for df in players_dfs]
+
+        new_df_headers = ["role", player_1, player_2, "difference"]
+        new_df = pd.DataFrame(columns=new_df_headers)
+        for df in players_dfs:
+            player_1_row = df[df.iloc[:, 1] == player_1]
+            player_2_row = df[df.iloc[:, 1] == player_2]
+            if not player_1_row.empty and not player_2_row.empty:
+                role = df.columns[0].split(' Team')[0]
+                player_1_strength = player_1_row.iloc[0, 2]
+                player_2_strength = player_2_row.iloc[0, 2]
+                difference = player_1_strength - player_2_strength
+                new_df = new_df._append(pd.Series([role, player_1_strength, player_2_strength, difference], index=new_df.columns), ignore_index=True)
+        return new_df
+    
+    def compare_teams(self, team_1, team_2):
+        num_cols_per_df = 6
+        sub_dfs = [self.merged_df.iloc[:, i:i+num_cols_per_df] for i in range(0, len(self.merged_df.columns), num_cols_per_df)]
+        team_dfs = [df for df in sub_dfs if team_1 in df.iloc[:, 0].values and team_2 in df.iloc[:, 0].values]
+        team_dfs = [df[df.iloc[:, 0].isin([team_1, team_2])] for df in team_dfs]
+    
+transfer_engine = TransferEngine('lbr/')
+# targets = transfer_engine.get_targets(
+#     position='D (L)',
+#     role='fbd',
+#     # team='Pogoń',
+#     # strength=2,
+#     maximum_value=50000000,
+#     # maximum_age=25,
+#     # minimum_age=28,
+#     minimum_strength=39,
+# )
+# print(targets)
+
+comparison = transfer_engine.compare_players('Erik Expósito', 'Efthymis Koulouris')
+print(comparison)

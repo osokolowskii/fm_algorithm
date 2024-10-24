@@ -46,11 +46,12 @@ class SquadAnalyzer:
         def player_to_add(player):
             conditions = [
                 player.get(role),
-                not pd.isna(player[role])
+                 not pd.isna(player.get(role, 0))
             ]
             
             if self.only_positive:
-                conditions.append(player[role] > 0)
+                conditions.append(player.get(role, 0) > 0)  # Use get method with default value 0 to avoid KeyError
+
             
             return all(conditions)
         
@@ -58,7 +59,7 @@ class SquadAnalyzer:
         
         for squad_dict in self.squads:
             for team, squad in squad_dict.items():
-                roles_strength.extend([[team, player['Name'], player[role], player['Age'], player['Salary'], player['Value']] for _, player in squad.iterrows() if player_to_add(player)])
+                roles_strength.extend([[player.get('Club') or team, player['Name'], player[role], player['Age'], player['Salary'], player['Value']] for _, player in squad.iterrows() if player_to_add(player)])
 
         # Sort the list by player strength in the role (second element in the list)
         roles_strength.sort(key=lambda x: x[2], reverse=True)
@@ -106,3 +107,6 @@ class SquadAnalyzer:
             all_positions_df = pd.concat([all_positions_df, position_df], axis=1)
 
         all_positions_df.to_excel(f'{self.league_dir}_report.xlsx', sheet_name='League Summarize', index=False)
+
+analizer = SquadAnalyzer(league_dir='lbs', only_positive=True)
+analizer.prepare_league_sheet()
