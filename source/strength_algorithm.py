@@ -1,270 +1,89 @@
+import json
 import os
 import pandas as pd
-import json
 
 from collections import defaultdict
 
-formations_dict = {
-    'GK': ['GK'],
-    'Defenders': ['D', 'WB'],
-    'Midfielders': ['DM', 'M', 'AM'],
-    'Attackers': ['ST', 'W']
-}
-
-
-class FMAlgorithm:
-
-    def __init__(self, whole_league=False, calculate_other_positions=False, league_directory='ekstraklasa', team_file='ekstraklasa/pogoń.html', lang='en', save_attributes=False):
+class StrengthAlgorithm:
+    def __init__(self, league_dir, **kwargs):
         """
-        Initialize the FMAlgorithm.
+        Constructor for StrengthAlgorithm class.
 
-        :param whole_league: Flag to indicate if we want to calculate strength of whole league.
-        :param calculate_other_positions: Flag to indicate if we want to calculate strength for other positions than main.
-        :param league_directory: Directory with league teams.
-        :param team_file: File with team data.
+        Args:
+            league_dir (str): Directory of league files.
+
+        Optional Args:
+            team_dir (str): Directory of team file. Default is False.
+            lang (str): Language of the league. Default is 'en'.
+            positions_file (str): File with positions. Default is 'positions.json'.
+            roles_of_positions_file (str): File with roles of positions. Default is 'roles_of_positions.json'.
+            player_analysis_scope (int): Scope of player analysis. It should be in range 0-3.
+                0 means don't calculate any player specific analysis.
+                1 means calculate player specific analysis for players in names_to_calculate list.
+                2 means calculate player specific analysis for all players playing in teams in names_to_calculate list.
+                3 means calculate player specific analysis for all players.
+            names_to_calculate (list): List of names for which player specific analysis should be calculated.
+                It can contain names of players or teams, depending on player_analysis_scope.
+
+        Raises:
+            ValueError: If lang is not 'en' or 'pl'.
+            ValueError: If positions_file does not exist.
+            ValueError: If positions_file is not a json file.
+            ValueError: If roles_of_positions_file does not exist.
+            ValueError: If roles_of_positions_file is not a json file.
+            ValueError: If player_analysis_scope is not in range 0-3.
+            ValueError: If player_analysis_scope is 1 or 2 and names_to_calculate is not provided or is empty.
         """
-        self.league_directory = league_directory
-        self.calculate_other_positions = calculate_other_positions
-        self.lang = lang
-        self.save_attributes = save_attributes
+        self.validate_kwargs(kwargs)
 
-        self.positions_file = 'positions.json'
-        self.position_with_roles_file = 'positions_with_roles.json'
-        with open(self.positions_file, 'r') as f:
-            self.positions = json.load(f)
+        self.league_dir = "raw_files" + league_dir
+        team_dir = kwargs.get("team_dir", False)
+        self.team_dir = f'{league_dir}/{team_dir}' if team_dir else False
+        self.lang = kwargs.get("lang", "en")
 
-        with open(self.position_with_roles_file, 'r') as f:
-            self.positions_with_roles = json.load(f)
+        self.positions_file = "config/" + kwargs.get("positions_file", "positions.json")
+        self.roles_of_postions_file = "config/" + kwargs.get("roles_of_postions_file", "roles_of_positions.json")
 
+        self.positions = self.load_positions()
+        self.roles_of_positions = self.load_roles_of_positions()
 
-        if not whole_league:
-            self.team_file = team_file
-            self.squad_rawdata_list = pd.read_html(self.team_file, header=0, encoding="utf-8", keep_default_na=False)
+        self.player_analysis_scope = kwargs.get("player_analysis_scope", 0)
+        self.names_to_calculate = kwargs.get("names_to_calculate") if self.player_analysis_scope in (1, 2) else None
 
-            self.squad_rawdata = self.squad_rawdata_list[0]
-
-        self.roles_for_all_positions = {item['Position']: item['Roles'] for item in self.positions_with_roles}
-        self.roles_values = {item['RoleCode']: {k: v for k, v in item.items() if type(v) == int and v > 0} for item in self.positions}
-        self.all_attributes = list(attr for attr in self.positions[0].keys() if attr not in ['Role', 'RoleCode'])
-
-    def get_positions_list(self, player_positions):
+    def validate_kwargs(self, **kwargs):
         """
-        Method to retrieve list of positions for player.
-
-        :param player_positions: Player positions.
-
-        :return: List of positions for player.
+        Method for validating kwargs passed to constructor.
         """
-        positions_list = player_positions.replace(',', '/').split('/')
-        all_positions = []
-        if len(positions_list):
-            for i, pos in enumerate(positions_list):
-                if pos == 'GK':
-                    return ['GK']
-                if pos == 'DM':
-                    return ['DM (C)']
-                if '(' not in pos:
-                    all_sides = self.get_sides_for_position(positions_list, i)
-                else:
-                    all_sides = [pos[i] for i in range(pos.find('(')+1, pos.find(')'))]
-                pos = pos.strip().replace('  ', ' ').split(' ')[0]
-                all_positions.extend([f'{pos} ({side})' for side in all_sides])
-
-        return all_positions
-    
-    def get_sides_for_position(self, player_positions, start_index):
-        """
-        Method to get sides for position.
-
-        :param player_positions: List of player positions.
-        :param start_index: Index of position to start from in player_positions.
-
-        :return: List of sides for position.
-        """
-        for i in range(start_index + 1, len(player_positions)):
-            if '(' in player_positions[i]:
-                index_of_side = player_positions[i].find('(')
-                sides = list(player_positions[i][index_of_side+1:player_positions[i].find(')')])
-                return sides
-        return []
-
-    
-    def prepare_roles_for_player(self, player_positions):
-        """
-        Method to prepare roles for player based on his positions.
-
-        :param player_positions: Player positions.
-
-        :return: List of roles for player.
-        """
-        positions_list = self.get_positions_list(player_positions)
-        return positions_list
-    
-    def calculate_strength_in_position(self, player, position, sign=1):
-        """
-        Method to calculate strength of player in given position.
+        if "lang" in kwargs and kwargs["lang"] not in ("en", "pl"):
+            raise ValueError("lang must be 'en' or 'pl'")
         
-        :param player: Player data.
-        :param position: Position to calculate strength for.
-        :param sign: Sign to multiply the strength by. 1 for main position, -1 for other positions.
-        """
-        player_strength = defaultdict(lambda: 0)
-        if 'DM' in position:
-            position = 'DM (C)'
-        roles_for_this_position = self.roles_for_all_positions[position.strip().replace('  (', ' (').replace('(R)', '(L)')]
-        for role in roles_for_this_position:
-            for attribute in self.roles_values[role]:
-                player_strength[role] += player[attribute] * self.roles_values[role][attribute] * sign
-            player_strength[role] = player_strength[role] / len(self.roles_values[role])
-        return player_strength
-    
-    def calculate_strength_of_player(self, player):
-        """
-        Method to calculate strength of player in every role he can play.
-
-        :param player: Player data.
-
-        :return: Dictionary with player strength in every role.
-        """
-        player_strength = defaultdict(lambda: 0)
-        player_positions = self.get_positions_list(player['Position'])
-
-        positions_to_calculate = player_positions if not self.calculate_other_positions else self.roles_for_all_positions.keys()
-
-        for position in positions_to_calculate:
-            sign = 1 if position in player_positions else -1
-            position_strength = self.calculate_strength_in_position(player, position, sign=sign)
+        file_paths = [path for path in ("positions_file", "roles_of_positions_file") if path in kwargs]
+        for file_path in file_paths:
+            if not os.path.isfile(kwargs[file_path]):
+                raise ValueError(f"{file_path} file does not exist")
+            if not kwargs[file_path].endswith(".json"):
+                raise ValueError(f"{file_path} file must be a json file")
             
-            max_strength = 0
-            max_strength_role = None
+        if "player_analysis_scope" in kwargs and kwargs["player_analysis_scope"] not in range(4):
+            raise ValueError("player_analysis_scope must be in range 0-4 (without 4)")
+        if kwargs.get("player_analysis_scope") in (1, 2) and not kwargs.get("names_to_calculate"):
+            raise ValueError("names_to_calculate must be passed and not be empty in kwargs when player_analysis_scope is 1 or 2")
 
-            for role, strength in position_strength.items():
-                player_strength[role] = strength
-                if (strength > max_strength and sign == 1) or (strength < max_strength and sign == -1):
-                    max_strength = strength
-                    max_strength_role = role if sign == 1 else f'({role})'
-
-            player_strength[f'BestRole_{position}'] = max_strength_role
-
-        player_strength.update({
-            'Positions': player_positions,
-            'Formations': self.get_formations_from_positions(player_positions),
-            'Value': player['Transfer Value'],
-            'Age': player['Age'],
-            'Salary': player['Salary'],
-        })
-
-        if player['Club']:
-            player_strength['Club'] = player['Club']
-
-        if self.save_attributes:
-            player_strength.update({attr: player[attr] for attr in self.all_attributes})
-
-        return player_strength
+    def load_file(self, file):
+        """
+        Method for loading file from path passed in parameter and returning it as a dictionary.
+        """
+        with open(file, "r") as f:
+            return json.load(f)
+        
+    def load_positions(self):
+        """
+        Method for loading positions from positions_file.
+        """
+        return self.load_file(self.positions_file)
     
-    def get_formations_from_positions(self, player_positions):
+    def load_roles_of_positions(self):
         """
-        Method to get formations (defence, midfield, attack) from player positions.
-
-        :param player_positions: List of player positions.
-
-        :return: Set of formations.
+        Method for loading roles of positions from roles_of_positions_file.
         """
-        formations = []
-        for pos in player_positions:
-            pos_to_check = pos.split(' ')[0]
-            formations.extend([key for key, value in formations_dict.items() if pos_to_check in value])
-                
-        return set(formations)
-    
-    def calculate_team_strength(self):
-        """
-        Method to calculate strength of every player in team.
-        """
-        team_strength = defaultdict(lambda: 0)
-        for i, player in self.squad_rawdata.iterrows():
-            team_strength[player['Name']] = self.calculate_strength_of_player(player)
-        return team_strength
-    
-    def save_player_strengths(self, team_strength, sort_type='classic'):
-        """
-        Method to save player strengths to DataFrame. Then it can be saved to Excel file.
-
-        :param team_strength: Dictionary with team strength.
-        :param sort_type: Sorting method. Can be 'classic', 'separately', or 'absolute'.
-
-        :return: DataFrame with player strengths.
-        """
-        player_dfs = []
-        for player_name, player_strengths in team_strength.items():
-            player_data = []
-            for role, strength in player_strengths.items():
-                if type(strength) == float:
-                    player_data.append({
-                        f"{player_name} role": role,
-                        f"{player_name} strength": float(strength)
-                    })
-            player_df = pd.DataFrame(player_data)
-
-            if sort_type == 'classic':
-                # Sort without editing any values (20 > 10 > -8 > -18)
-                player_df = player_df.sort_values(by=f"{player_name} strength", ascending=False)
-            elif sort_type == 'separately':
-                # Sort separately - positive values first and descending, then negative values ascending (20 > 10 > -18 > -8)
-                player_df_positive = player_df[player_df[f"{player_name} strength"] >= 0].sort_values(by=f"{player_name} strength", ascending=False)
-                player_df_negative = player_df[player_df[f"{player_name} strength"] < 0].sort_values(by=f"{player_name} strength")
-                player_df = pd.concat([player_df_positive, player_df_negative])
-            elif sort_type == 'absolute':
-                # Sort separately with absolute values (20 > -18 > 10 > -8)
-                player_df['AbsoluteStrength'] = player_df[f"{player_name} strength"].abs()
-                player_df = player_df.sort_values(by='AbsoluteStrength', ascending=False).drop(columns=['AbsoluteStrength'])
-
-            player_df = player_df.reset_index(drop=True)
-            player_dfs.append(player_df)
-
-        player_strength_df = pd.concat(player_dfs, axis=1)
-        return player_strength_df
-
-    def save_team_strength(self, team_strength):
-        """
-        Method to save team strength to Excel file.
-
-        :param team_strength: Dictionary with team strength.
-        """
-        data = [{'Name': name, **strengths} for name, strengths in team_strength.items()]
-        df = pd.DataFrame(data)
-
-        # Sort columns
-        cols = df.columns.tolist()
-        cols.remove('Name')
-        best_role_cols = [col for col in cols if 'BestRole' in col]
-        other_cols = [col for col in cols if 'BestRole' not in col]
-        cols = ['Name'] + sorted(best_role_cols) + sorted(other_cols)
-        df = df[cols]
-
-        player_strength_df = self.save_player_strengths(team_strength, sort_type='classic')
-
-        team_name = self.team_file.split('.')[0]
-        with pd.ExcelWriter(f'{team_name}.xlsx') as writer:
-            df.to_excel(writer, sheet_name='Team Strength', index=False)
-            player_strength_df.to_excel(writer, sheet_name='Player Strengths', index=False)
-
-    def calculate_strength_of_league(self):
-        """
-        Method to calculate strength of every team in league.
-        """
-        for file in os.listdir(self.league_directory):
-            if file.endswith('.html'):
-                self.team_file = os.path.join(self.league_directory, file)
-                self.squad_rawdata_list = pd.read_html(self.team_file, header=0, encoding="utf-8", keep_default_na=False)
-                self.squad_rawdata = self.squad_rawdata_list[0]
-                self.save_team_strength(self.calculate_team_strength())
-
-            
-algorithm = FMAlgorithm(
-    whole_league=True,
-    calculate_other_positions=False,
-    league_directory='lbs',
-    save_attributes=True
-)
-algorithm.calculate_strength_of_league()
+        return self.load_file(self.roles_of_postions_file)

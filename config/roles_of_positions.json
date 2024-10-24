@@ -26,8 +26,7 @@
         ]
     },
     {
-        "Position": "D (L)",
-        "Alternative": "D (R)",
+        "Position": "D (R)",
         "Roles": [
             "fba",
             "fbd",
@@ -40,8 +39,20 @@
         ]
     },
     {
-        "Position": "WB (L)",
-        "Alternative": "WB (R)",
+        "Position": "D (L)",
+        "Roles": [
+            "fba",
+            "fbd",
+            "fbs",
+            "ifbd",
+            "nfbd",
+            "wba",
+            "wbd",
+            "wbs"
+        ]
+    },
+    {
+        "Position": "WB (R)",
         "Roles": [
             "wba",
             "wbd",
@@ -54,7 +65,20 @@
         ]
     },
     {
-        "Position": "DM (C)",
+        "Position": "WB (L)",
+        "Roles": [
+            "wba",
+            "wbd",
+            "wbs",
+            "iwba",
+            "iwbd",
+            "iwbs",
+            "cwba",
+            "cwbs"
+        ]
+    },
+    {
+        "Position": "DM",
         "Roles": [
             "bwmd",
             "bwms",
@@ -90,8 +114,20 @@
         ]
     },
     {
+        "Position": "M (R)",
+        "Roles": [
+            "wa",
+            "ws",
+            "dwd",
+            "dws",
+            "iwa",
+            "iws",
+            "wpa",
+            "wps"
+        ]
+    },
+    {
         "Position": "M (L)",
-        "Alternative": "M (R)",
         "Roles": [
             "wa",
             "ws",
@@ -116,8 +152,24 @@
         ]
     },
     {
+        "Position": "AM (R)",
+        "Roles": [
+            "ifa",
+            "ifs",
+            "raua",
+            "apa",
+            "aps",
+            "iwa",
+            "iws",
+            "wa",
+            "ws",
+            "trea",
+            "wtfa",
+            "wtfs"
+        ]
+    },
+    {
         "Position": "AM (L)",
-        "Alternative": "AM (R)",
         "Roles": [
             "ifa",
             "ifs",
